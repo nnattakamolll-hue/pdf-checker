@@ -10,7 +10,6 @@ st.set_page_config(page_title="PDF Comparison Tool", page_icon="📄", layout="w
 st.title("📄 ระบบตรวจสอบและเปรียบเทียบไฟล์ PDF ด้วย AI")
 st.caption("อัปโหลดไฟล์ตั้งต้น (File A) และไฟล์ที่ต้องการตรวจ (File B) เพื่อให้ AI เทียบจุดต่างให้ทันที")
 
-# ย้ายช่องใส่ API Key มาไว้หน้าจอหลักตรงนี้เลย จะได้เห็นชัดเจน
 api_key = st.text_input("🔑 กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
 st.divider()
@@ -70,8 +69,9 @@ if st.button("🚀 เริ่มเปรียบเทียบเอกส�
             3. **ข้อเสนอแนะเพิ่มเติม**
             """
             
+            # อัปเดตโมเดลเป็น gemini-3.8-flash ตามคำแนะนำของระบบ
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.8-flash',
                 contents=[g_a, g_b, prompt]
             )
             
