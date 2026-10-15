@@ -8,7 +8,7 @@ import time
 st.set_page_config(page_title="PDF Description Strict Checker", page_icon="📄", layout="wide")
 
 st.title("📄 ระบบตรวจสอบความถูกต้อง Description สินค้าด้วย AI")
-st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เน้นเช็ค Description แบบคำต่อคำ")
+st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เน้นเช็ค Description แบบคำต่อคำ พร้อมระบบกันหลุด (Auto-Retry)")
 
 api_key = st.text_input("🔑 กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
@@ -68,11 +68,31 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             3. หากตรงกันทั้งหมดทุกรายการ ให้สรุปผลว่า "Description ตรงกันทุกประการ 100%"
             """
             
-            # อัปเดตใช้รุ่น gemini-3.8-flash ตามที่ระบบแนะนำ
-            response = client.models.generate_content(
-                model='gemini-3.8-flash',
-                contents=[g_a, g_b, prompt]
-            )
+            # ระบบลองส่งซ้ำอัตโนมัติ (Auto-Retry) เมื่อเจอ 503 High Demand
+            max_retries = 5
+            retry_delay = 5
+            response = None
+            success = False
+            
+            for attempt in range(max_retries):
+                try:
+                    status_box.write(f"🔄 กำลังประมวลผล (พยายามครั้งที่ {attempt+1}/{max_retries})...")
+                    response = client.models.generate_content(
+                        model='gemini-3.8-flash',
+                        contents=[g_a, g_b, prompt]
+                    )
+                    success = True
+                    break
+                except Exception as api_err:
+                    if ("503" in str(api_err) or "UNAVAILABLE" in str(api_err)) and attempt < max_retries - 1:
+                        status_box.warning(f"⚠️ เซิร์ฟเวอร์หนาแน่น กำลังลองใหม่ในอีก {retry_delay} วินาที...")
+                        time.sleep(retry_delay)
+                        retry_delay += 3
+                    else:
+                        raise api_err
+            
+            if not success or not response:
+                raise Exception("เซิร์ฟเวอร์หนาแน่นเกินไป โปรดลองกดปุ่มเริ่มตรวจสอบใหม่อีกครั้ง")
             
             status_box.update(label="✅ ตรวจสอบเสร็จสิ้น!", state="complete", expanded=False)
             st.markdown(response.text)
