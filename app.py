@@ -27,7 +27,15 @@ if file1 and file2:
                 reader2 = pypdf.PdfReader(file2)
                 text2 = "".join([page.extract_text() for page in reader2.pages])
 
-                client = genai.Client()
+                api_key = st.secrets.get("GEMINI_API_KEY", "")
+                
+                # รองรับทั้งคีย์แบบ AQ (OAuth) และคีย์ปกติ
+                if api_key.startswith("AQ"):
+                    client = genai.Client(http_options={'api_version': 'v1alpha'}, vertexai=False)
+                    client.api_client.api_key = None
+                    client.api_client.default_headers = {"Authorization": f"Bearer {api_key}"}
+                else:
+                    client = genai.Client(api_key=api_key)
 
                 prompt = f"""
 คุณเป็นผู้ตรวจสอบเอกสารระดับมืออาชีพ กรุณาเปรียบเทียบข้อมูลในเอกสาร 2 ชุดนี้อย่างละเอียด:
