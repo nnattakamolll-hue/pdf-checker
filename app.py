@@ -7,8 +7,8 @@ import time
 
 st.set_page_config(page_title="PDF Comparison Tool", page_icon="📄", layout="wide")
 
-st.title("📄 ระบบตรวจสอบและเปรียบเทียบไฟล์ PDF ด้วย AI")
-st.caption("อัปโหลดไฟล์ตั้งต้น (File A) และไฟล์ที่ต้องการตรวจ (File B) เพื่อให้ AI เทียบจุดต่างให้ทันที")
+st.title("📄 ระบบตรวจสอบและเปรียบเทียบไฟล์ PDF ด้วย AI (Ultra-Stable)")
+st.caption("อัปโหลดไฟล์ตั้งต้น (File A) และไฟล์ที่ต้องการตรวจ (File B) ระบบจะสลับโมเดลอัตโนมัติเพื่อป้องกันเซิร์ฟเวอร์เต็ม")
 
 api_key = st.text_input("🔑 กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
@@ -69,25 +69,26 @@ if st.button("🚀 เริ่มเปรียบเทียบเอกส�
             3. **ข้อเสนอแนะเพิ่มเติม**
             """
             
-            # เพิ่มระบบพยายามส่งซ้ำอัตโนมัติ (Retry Mechanism) ป้องกัน Error 503
-            max_retries = 3
-            retry_delay = 3
+            # รายชื่อโมเดลสำรอง กรณีรุ่นหลักติด Error 503 หรือ 404
+            candidate_models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.5-flash']
             response = None
+            success = False
             
-            for attempt in range(max_retries):
+            for model_name in candidate_models:
                 try:
+                    status_box.write(f"🔄 กำลังประมวลผลผ่านโมเดล: {model_name}...")
                     response = client.models.generate_content(
-                        model='gemini-3.8-flash',
+                        model=model_name,
                         contents=[g_a, g_b, prompt]
                     )
+                    success = True
                     break
-                except Exception as api_err:
-                    if ("503" in str(api_err) or "UNAVAILABLE" in str(api_err)) and attempt < max_retries - 1:
-                        status_box.warning(f"⚠️ เซิร์ฟเวอร์หนาแน่น (พยายามครั้งที่ {attempt+1}/{max_retries}) กำลังลองใหม่ในอีก {retry_delay} วินาที...")
-                        time.sleep(retry_delay)
-                        retry_delay *= 2
-                    else:
-                        raise api_err
+                except Exception as model_err:
+                    status_box.warning(f"⚠️ โมเดล {model_name} ขัดข้อง กำลังลองสลับรุ่นถัดไป...")
+                    time.sleep(2)
+            
+            if not success or not response:
+                raise Exception("ทุกโมเดลในระบบกำลังหนาแน่น โปรดรอสักครู่แล้วลองกดใหม่อีกครั้ง")
             
             status_box.update(label="✅ เสร็จเรียบร้อย!", state="complete", expanded=False)
             st.markdown(response.text)
