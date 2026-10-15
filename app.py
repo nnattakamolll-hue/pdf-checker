@@ -69,11 +69,25 @@ if st.button("🚀 เริ่มเปรียบเทียบเอกส�
             3. **ข้อเสนอแนะเพิ่มเติม**
             """
             
-            # อัปเดตโมเดลเป็น gemini-3.8-flash ตามคำแนะนำของระบบ
-            response = client.models.generate_content(
-                model='gemini-3.8-flash',
-                contents=[g_a, g_b, prompt]
-            )
+            # เพิ่มระบบพยายามส่งซ้ำอัตโนมัติ (Retry Mechanism) ป้องกัน Error 503
+            max_retries = 3
+            retry_delay = 3
+            response = None
+            
+            for attempt in range(max_retries):
+                try:
+                    response = client.models.generate_content(
+                        model='gemini-3.8-flash',
+                        contents=[g_a, g_b, prompt]
+                    )
+                    break
+                except Exception as api_err:
+                    if ("503" in str(api_err) or "UNAVAILABLE" in str(api_err)) and attempt < max_retries - 1:
+                        status_box.warning(f"⚠️ เซิร์ฟเวอร์หนาแน่น (พยายามครั้งที่ {attempt+1}/{max_retries}) กำลังลองใหม่ในอีก {retry_delay} วินาที...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                    else:
+                        raise api_err
             
             status_box.update(label="✅ เสร็จเรียบร้อย!", state="complete", expanded=False)
             st.markdown(response.text)
