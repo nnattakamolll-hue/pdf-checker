@@ -55,7 +55,6 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             
             status_box.write("🤖 AI กำลังตรวจสอบ Description แบบเข้มงวด...")
             
-            # Prompt ที่ปรับปรุงให้เช็ค Description แบบตรงกันเป๊ะๆ
             prompt = """
             จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ) กับ เอกสาร A (ไฟล์ตั้งต้น) โดยเน้นเจาะจงตรวจสอบที่ "Description (รายละเอียด/คำอธิบายสินค้า)" เป็นหลักอย่างเข้มงวดที่สุด
             
@@ -69,8 +68,9 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             3. หากตรงกันทั้งหมดทุกรายการ ให้สรุปผลว่า "Description ตรงกันทุกประการ 100%"
             """
             
+            # อัปเดตใช้รุ่น gemini-3.8-flash ตามที่ระบบแนะนำ
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.8-flash',
                 contents=[g_a, g_b, prompt]
             )
             
