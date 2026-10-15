@@ -5,10 +5,10 @@ import tempfile
 import os
 import time
 
-st.set_page_config(page_title="PDF Comparison Tool", page_icon="📄", layout="wide")
+st.set_page_config(page_title="PDF Description Strict Checker", page_icon="📄", layout="wide")
 
-st.title("📄 ระบบตรวจสอบและเปรียบเทียบไฟล์ PDF ด้วย AI (Ultra-Stable)")
-st.caption("อัปโหลดไฟล์ตั้งต้น (File A) และไฟล์ที่ต้องการตรวจ (File B) ระบบจะสลับโมเดลอัตโนมัติเพื่อป้องกันเซิร์ฟเวอร์เต็ม")
+st.title("📄 ระบบตรวจสอบความถูกต้อง Description สินค้าด้วย AI")
+st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เน้นเช็ค Description แบบคำต่อคำ")
 
 api_key = st.text_input("🔑 กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
@@ -35,7 +35,7 @@ def upload_to_gemini(client, uploaded_file):
     return g_file
 
 st.divider()
-if st.button("🚀 เริ่มเปรียบเทียบเอกสาร", type="primary", use_container_width=True):
+if st.button("🚀 เริ่มตรวจสอบ Description", type="primary", use_container_width=True):
     if not api_key:
         st.error("❌ กรุณากรอก Gemini API Key ในช่องด้านบนก่อนครับ")
     elif not file_a or not file_b:
@@ -53,51 +53,35 @@ if st.button("🚀 เริ่มเปรียบเทียบเอกส�
             g_b = upload_to_gemini(client, file_b)
             uploaded_files.append(g_b.name)
             
-            status_box.write("🤖 AI กำลังอ่านและเทียบข้อความ ตาราง ตัวเลข...")
+            status_box.write("🤖 AI กำลังตรวจสอบ Description แบบเข้มงวด...")
             
+            # Prompt ที่ปรับปรุงให้เช็ค Description แบบตรงกันเป๊ะๆ
             prompt = """
-            จงเปรียบเทียบ **เอกสาร B (ไฟล์ตรวจสอบ)** เทียบกับ **เอกสาร A (ไฟล์ตั้งต้น)** อย่างละเอียด
-            ตรวจสอบว่าเนื้อหา ตัวเลข เงื่อนไข และรายละเอียดถูกต้องตรงกันหรือไม่
+            จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ) กับ เอกสาร A (ไฟล์ตั้งต้น) โดยเน้นเจาะจงตรวจสอบที่ "Description (รายละเอียด/คำอธิบายสินค้า)" เป็นหลักอย่างเข้มงวดที่สุด
             
-            กรุณารายงานผลเป็นภาษาไทย ดังนี้:
-            1. **สรุปภาพรวม (Overview):** เอกสารตรงกันหรือไม่ มีจุดต่างสำคัญตรงไหนบ้าง
-            2. **ตารางเปรียบเทียบจุดที่ต่างกัน (Discrepancies Table):** 
-               - หัวข้อ/รายการ
-               - ค่าในไฟล์ตั้งต้น (File A)
-               - ค่าในไฟล์ตรวจสอบ (File B)
-               - หมายเหตุ / ผลกระทบ
-            3. **ข้อเสนอแนะเพิ่มเติม**
+            เงื่อนไขการตรวจสอบ:
+            1. รายละเอียดสินค้า (Description) ในไฟล์ตรวจสอบ (B) ต้องตรงกับไฟล์ตั้งต้น (A) แบบคำต่อคำ ตัวอักษรต่อตัวอักษร (Exact Match) ห้ามมีข้อความตกหล่น เพิ่มเติม หรือผิดเพี้ยนเด็ดขาด
+            2. หากมีจุดไหนที่ไม่ตรงกันแม้แต่ตัวอักษรเดียว หรือมีความคลาดเคลื่อน ให้ทำรายงานระบุออกมาทันทีในรูปแบบตาราง:
+               - รหัสรายการ / หัวข้อสินค้า
+               - Description ในไฟล์ตั้งต้น (File A)
+               - Description ในไฟล์ตรวจสอบ (File B)
+               - จุดที่แตกต่าง / สิ่งที่ผิดเพี้ยน
+            3. หากตรงกันทั้งหมดทุกรายการ ให้สรุปผลว่า "Description ตรงกันทุกประการ 100%"
             """
             
-            # รายชื่อโมเดลสำรอง กรณีรุ่นหลักติด Error 503 หรือ 404
-            candidate_models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.5-flash']
-            response = None
-            success = False
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[g_a, g_b, prompt]
+            )
             
-            for model_name in candidate_models:
-                try:
-                    status_box.write(f"🔄 กำลังประมวลผลผ่านโมเดล: {model_name}...")
-                    response = client.models.generate_content(
-                        model=model_name,
-                        contents=[g_a, g_b, prompt]
-                    )
-                    success = True
-                    break
-                except Exception as model_err:
-                    status_box.warning(f"⚠️ โมเดล {model_name} ขัดข้อง กำลังลองสลับรุ่นถัดไป...")
-                    time.sleep(2)
-            
-            if not success or not response:
-                raise Exception("ทุกโมเดลในระบบกำลังหนาแน่น โปรดรอสักครู่แล้วลองกดใหม่อีกครั้ง")
-            
-            status_box.update(label="✅ เสร็จเรียบร้อย!", state="complete", expanded=False)
+            status_box.update(label="✅ ตรวจสอบเสร็จสิ้น!", state="complete", expanded=False)
             st.markdown(response.text)
             
             st.divider()
             st.download_button(
                 label="📥 ดาวน์โหลดรายงานผลเป็นไฟล์ข้อความ (.txt)",
                 data=response.text,
-                file_name="comparison_report.txt",
+                file_name="description_report.txt",
                 mime="text/plain"
             )
 
