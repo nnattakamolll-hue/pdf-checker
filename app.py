@@ -8,7 +8,7 @@ import time
 st.set_page_config(page_title="PDF Description Strict Checker", page_icon="📄", layout="wide")
 
 st.title("📄 ระบบตรวจสอบความถูกต้อง Description สินค้าด้วย AI")
-st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เน้นเช็ค Description แบบคำต่อคำ พร้อมระบบกันหลุด (Auto-Retry)")
+st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เน้นเช็ค Description แบบคำต่อคำ")
 
 api_key = st.text_input("🔑 กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
@@ -55,20 +55,17 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             
             status_box.write("🤖 AI กำลังตรวจสอบ Description แบบเข้มงวด...")
             
+            # ปรับปรุง Prompt สั่งห้ามใช้ <br> และจัดรูปแบบตารางให้สะอาด
             prompt = """
             จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ) กับ เอกสาร A (ไฟล์ตั้งต้น) โดยเน้นเจาะจงตรวจสอบที่ "Description (รายละเอียด/คำอธิบายสินค้า)" เป็นหลักอย่างเข้มงวดที่สุด
             
             เงื่อนไขการตรวจสอบ:
             1. รายละเอียดสินค้า (Description) ในไฟล์ตรวจสอบ (B) ต้องตรงกับไฟล์ตั้งต้น (A) แบบคำต่อคำ ตัวอักษรต่อตัวอักษร (Exact Match) ห้ามมีข้อความตกหล่น เพิ่มเติม หรือผิดเพี้ยนเด็ดขาด
-            2. หากมีจุดไหนที่ไม่ตรงกันแม้แต่ตัวอักษรเดียว หรือมีความคลาดเคลื่อน ให้ทำรายงานระบุออกมาทันทีในรูปแบบตาราง:
-               - รหัสรายการ / หัวข้อสินค้า
-               - Description ในไฟล์ตั้งต้น (File A)
-               - Description ในไฟล์ตรวจสอบ (File B)
-               - จุดที่แตกต่าง / สิ่งที่ผิดเพี้ยน
-            3. หากตรงกันทั้งหมดทุกรายการ ให้สรุปผลว่า "Description ตรงกันทุกประการ 100%"
+            2. หากมีจุดไหนที่ไม่ตรงกันแม้แต่ตัวอักษรเดียว หรือมีความคลาดเคลื่อน ให้ทำรายงานระบุออกมาทันทีในรูปแบบตาราง Markdown
+            3. **ข้อห้ามสำคัญ:** ห้ามใช้แท็ก HTML เช่น `<br>` ในตารางเด็ดขาด หากต้องการแบ่งบรรทัดในช่องตาราง ให้ใช้การขึ้นบรรทัดใหม่ตามปกติ หรือใช้สัญลักษณ์ bullet (-) แยกข้อความแทน เพื่อให้อ่านง่ายและสะอาดตาที่สุด
+            4. หากตรงกันทั้งหมดทุกรายการ ให้สรุปผลว่า "Description ตรงกันทุกประการ 100%"
             """
             
-            # ระบบลองส่งซ้ำอัตโนมัติ (Auto-Retry) เมื่อเจอ 503 High Demand
             max_retries = 5
             retry_delay = 5
             response = None
@@ -76,7 +73,6 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             
             for attempt in range(max_retries):
                 try:
-                    status_box.write(f"🔄 กำลังประมวลผล (พยายามครั้งที่ {attempt+1}/{max_retries})...")
                     response = client.models.generate_content(
                         model='gemini-3.8-flash',
                         contents=[g_a, g_b, prompt]
@@ -85,7 +81,6 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
                     break
                 except Exception as api_err:
                     if ("503" in str(api_err) or "UNAVAILABLE" in str(api_err)) and attempt < max_retries - 1:
-                        status_box.warning(f"⚠️ เซิร์ฟเวอร์หนาแน่น กำลังลองใหม่ในอีก {retry_delay} วินาที...")
                         time.sleep(retry_delay)
                         retry_delay += 3
                     else:
