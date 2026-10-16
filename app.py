@@ -8,7 +8,7 @@ import time
 st.set_page_config(page_title="PDF Description Strict Checker", page_icon="📄", layout="wide")
 
 st.title("📄 ระบบตรวจสอบความถูกต้อง Description สินค้าด้วย AI")
-st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เน้นเช็ค Description แบบคำต่อคำ")
+st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เน้นเช็ค Description แบบคำต่อคำ พร้อมระบบกันหลุด (Auto-Retry)")
 
 api_key = st.text_input("🔑 กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
@@ -55,6 +55,7 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             
             status_box.write("🤖 AI กำลังตรวจสอบ Description แบบเข้มงวด...")
             
+            # เพิ่มเงื่อนไขสั่งห้ามใช้ <br> ในตาราง
             prompt = """
             จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ) กับ เอกสาร A (ไฟล์ตั้งต้น) โดยเน้นเจาะจงตรวจสอบที่ "Description (รายละเอียด/คำอธิบายสินค้า)" เป็นหลักอย่างเข้มงวดที่สุด
             
@@ -65,8 +66,8 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             4. หากตรงกันทั้งหมดทุกรายการ ให้สรุปผลว่า "Description ตรงกันทุกประการ 100%"
             """
             
-            # ใช้รุ่น gemini-3.8-flash พร้อมระบบลองส่งซ้ำอัตโนมัติเมื่อเจอ 503
-            max_retries = 6
+            # ระบบลองส่งซ้ำอัตโนมัติ (Auto-Retry) เมื่อเจอ 503 High Demand
+            max_retries = 5
             retry_delay = 5
             response = None
             success = False
@@ -89,7 +90,7 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
                         raise api_err
             
             if not success or not response:
-                raise Exception("เซิร์ฟเวอร์หนาแน่นเกินไป โปรดลองกดปุ่มเริ่มตรวจสอบใหม่อีกครั้งในภายหลัง")
+                raise Exception("เซิร์ฟเวอร์หนาแน่นเกินไป โปรดลองกดปุ่มเริ่มตรวจสอบใหม่อีกครั้ง")
             
             status_box.update(label="✅ ตรวจสอบเสร็จสิ้น!", state="complete", expanded=False)
             st.markdown(response.text)
