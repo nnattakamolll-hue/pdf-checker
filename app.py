@@ -55,7 +55,6 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             
             status_box.write("🤖 AI กำลังตรวจสอบ Description แบบเข้มงวด...")
             
-            # ปรับปรุง Prompt สั่งห้ามใช้ <br> และจัดรูปแบบตารางให้สะอาด
             prompt = """
             จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ) กับ เอกสาร A (ไฟล์ตั้งต้น) โดยเน้นเจาะจงตรวจสอบที่ "Description (รายละเอียด/คำอธิบายสินค้า)" เป็นหลักอย่างเข้มงวดที่สุด
             
@@ -66,28 +65,31 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             4. หากตรงกันทั้งหมดทุกรายการ ให้สรุปผลว่า "Description ตรงกันทุกประการ 100%"
             """
             
-            max_retries = 5
-            retry_delay = 5
+            # ใช้รุ่น gemini-1.5-flash พร้อมระบบลองซ้ำ (Retry) เผื่อเซิร์ฟเวอร์แน่น
+            max_retries = 6
+            retry_delay = 6
             response = None
             success = False
             
             for attempt in range(max_retries):
                 try:
+                    status_box.write(f"🔄 กำลังประมวลผล (พยายามครั้งที่ {attempt+1}/{max_retries})...")
                     response = client.models.generate_content(
-                        model='gemini-3.8-flash',
+                        model='gemini-1.5-flash',
                         contents=[g_a, g_b, prompt]
                     )
                     success = True
                     break
                 except Exception as api_err:
                     if ("503" in str(api_err) or "UNAVAILABLE" in str(api_err)) and attempt < max_retries - 1:
+                        status_box.warning(f"⚠️ เซิร์ฟเวอร์หนาแน่น กำลังลองใหม่ในอีก {retry_delay} วินาที...")
                         time.sleep(retry_delay)
-                        retry_delay += 3
+                        retry_delay += 4
                     else:
                         raise api_err
             
             if not success or not response:
-                raise Exception("เซิร์ฟเวอร์หนาแน่นเกินไป โปรดลองกดปุ่มเริ่มตรวจสอบใหม่อีกครั้ง")
+                raise Exception("เซิร์ฟเวอร์หนาแน่นเกินไป โปรดลองกดปุ่มเริ่มตรวจสอบใหม่อีกครั้งในภายหลัง")
             
             status_box.update(label="✅ ตรวจสอบเสร็จสิ้น!", state="complete", expanded=False)
             st.markdown(response.text)
