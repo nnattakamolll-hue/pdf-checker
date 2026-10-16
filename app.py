@@ -65,9 +65,9 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             4. หากตรงกันทั้งหมดทุกรายการ ให้สรุปผลว่า "Description ตรงกันทุกประการ 100%"
             """
             
-            # ใช้รุ่น gemini-1.5-flash พร้อมระบบลองซ้ำ (Retry) เผื่อเซิร์ฟเวอร์แน่น
+            # ใช้รุ่น gemini-3.8-flash พร้อมระบบลองส่งซ้ำอัตโนมัติเมื่อเจอ 503
             max_retries = 6
-            retry_delay = 6
+            retry_delay = 5
             response = None
             success = False
             
@@ -75,7 +75,7 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
                 try:
                     status_box.write(f"🔄 กำลังประมวลผล (พยายามครั้งที่ {attempt+1}/{max_retries})...")
                     response = client.models.generate_content(
-                        model='gemini-1.5-flash',
+                        model='gemini-3.8-flash',
                         contents=[g_a, g_b, prompt]
                     )
                     success = True
@@ -84,7 +84,7 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
                     if ("503" in str(api_err) or "UNAVAILABLE" in str(api_err)) and attempt < max_retries - 1:
                         status_box.warning(f"⚠️ เซิร์ฟเวอร์หนาแน่น กำลังลองใหม่ในอีก {retry_delay} วินาที...")
                         time.sleep(retry_delay)
-                        retry_delay += 4
+                        retry_delay += 3
                     else:
                         raise api_err
             
