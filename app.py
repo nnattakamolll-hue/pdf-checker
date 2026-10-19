@@ -7,21 +7,21 @@ import time
 
 st.set_page_config(page_title="PDF Specific Fields Checker", page_icon="📄", layout="wide")
 
-st.title("📄 ระบบตรวจสอบ Description, ราคา และจำนวน ด้วย AI")
-st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) คัดเฉพาะหน้าที่เกี่ยวข้องกับ Description, ราคา และจำนวน")
+st.title("📄 ระบบตรวจสอบ PO ")
+st.caption("เปรียบเทียบไฟล์ Quottion กับไฟล์ PO ที่ต้องการตรวจสอบ")
 
-api_key = st.text_input("🔑 กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
+api_key = st.text_input("🔑 กรอก API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
 st.divider()
 
 col1, col2 = st.columns(2)
 with col1:
-    st.subheader("1. ไฟล์ตั้งต้น (Baseline - File A)")
-    file_a = st.file_uploader("เลือกไฟล์ PDF ต้นฉบับ", type=["pdf"], key="fa")
+    st.subheader("1. ไฟล์ตั้งต้น (Baseline - Quotation)")
+    file_a = st.file_uploader("เลือกไฟล์ PDF Quotation", type=["pdf"], key="fa")
 
 with col2:
-    st.subheader("2. ไฟล์ที่ต้องการตรวจ (To Check - File B)")
-    file_b = st.file_uploader("เลือกไฟล์ PDF ที่ต้องการเทียบ", type=["pdf"], key="fb")
+    st.subheader("2. ไฟล์ที่ต้องการตรวจ (To Check - PO)")
+    file_b = st.file_uploader("เลือกไฟล์ PDF PO", type=["pdf"], key="fb")
 
 def upload_to_gemini(client, uploaded_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -37,9 +37,9 @@ def upload_to_gemini(client, uploaded_file):
 st.divider()
 if st.button("🚀 เริ่มตรวจสอบเอกสาร", type="primary", use_container_width=True):
     if not api_key:
-        st.error("❌ กรุณากรอก Gemini API Key ในช่องด้านบนก่อนครับ")
+        st.error("❌ กรุณากรอก API Key ในช่องด้านบน")
     elif not file_a or not file_b:
-        st.error("❌ กรุณาอัปโหลดไฟล์ PDF ให้ครบทั้ง 2 ไฟล์ครับ")
+        st.error("❌ กรุณาอัปโหลดไฟล์ PDF ให้ครบทั้ง 2 ไฟล์")
     else:
         status_box = st.status("🔍 กำลังประมวลผล...", expanded=True)
         uploaded_files = []
@@ -53,7 +53,7 @@ if st.button("🚀 เริ่มตรวจสอบเอกสาร", type
             g_b = upload_to_gemini(client, file_b)
             uploaded_files.append(g_b.name)
             
-            status_box.write("🤖 AI กำลังคัดกรองเฉพาะหน้าที่เกี่ยวกับ Description และทำการตรวจสอบ...")
+            status_box.write("🤖 AI กำลังวิเคราะห์ข้อมูล และทำการตรวจสอบ...")
             
             # Prompt คัดเลือกเฉพาะหน้าที่เกี่ยวข้องกับ Description, ราคา และจำนวน
             prompt = """
