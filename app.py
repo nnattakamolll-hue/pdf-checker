@@ -5,10 +5,10 @@ import tempfile
 import os
 import time
 
-st.set_page_config(page_title="PDF Description Strict Checker", page_icon="📄", layout="wide")
+st.set_page_config(page_title="PDF Specific Fields Checker", page_icon="📄", layout="wide")
 
-st.title("📄 ระบบตรวจสอบความถูกต้อง Description สินค้าด้วย AI")
-st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เน้นเช็ค Description แบบคำต่อคำ พร้อมระบบกันหลุด (Auto-Retry)")
+st.title("📄 ระบบตรวจสอบ Description, ราคา และจำนวน ด้วย AI")
+st.caption("เปรียบเทียบไฟล์ตั้งต้น (File A) กับไฟล์ตรวจสอบ (File B) เจาะจงตรวจเฉพาะ Description, ราคา และจำนวน")
 
 api_key = st.text_input("🔑 กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
@@ -35,7 +35,7 @@ def upload_to_gemini(client, uploaded_file):
     return g_file
 
 st.divider()
-if st.button("🚀 เริ่มตรวจสอบ Description", type="primary", use_container_width=True):
+if st.button("🚀 เริ่มตรวจสอบเอกสาร", type="primary", use_container_width=True):
     if not api_key:
         st.error("❌ กรุณากรอก Gemini API Key ในช่องด้านบนก่อนครับ")
     elif not file_a or not file_b:
@@ -53,25 +53,28 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             g_b = upload_to_gemini(client, file_b)
             uploaded_files.append(g_b.name)
             
-            status_box.write("🤖 AI กำลังตรวจสอบ Description แบบเข้มงวด...")
+            status_box.write("🤖 AI กำลังตรวจสอบ Description, ราคา และจำนวน...")
             
-            # Prompt อเนกประสงค์สำหรับรองรับเอกสารหลากหลายรูปแบบ
+            # Prompt เน้นตรวจเฉพาะ Description, ราคา และจำนวน
             prompt = """
-            จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ) กับ เอกสาร A (ไฟล์ตั้งต้น) โดยเน้นเจาะจงตรวจสอบที่ "Description (รายละเอียด/คำอธิบายสินค้า)" และสเปกทางเทคนิคอย่างเข้มงวดที่สุด
+            จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ) กับ เอกสาร A (ไฟล์ตั้งต้น) โดยเจาะจงตรวจสอบเฉพาะ 3 จุดสำคัญนี้เท่านั้น:
+            1. Description (รายละเอียด/คำอธิบายสินค้า): ต้องตรงกันแบบคำต่อคำ ตัวอักษรต่อตัวอักษร (Exact Match) ห้ามมีข้อความตกหล่น หรือผิดเพี้ยน
+            2. จำนวนสินค้า (Quantity / Qty): ตัวเลขจำนวนต้องตรงกันทุกรายการ
+            3. ราคา (Price / Unit Price / Total Price): ตัวเลขราคาหน่วยและราคารวมต้องตรงกัน
 
-            คำสั่งพิเศษสำหรับการวิเคราะห์เอกสารหลากหลายรูปแบบ:
-            1. ให้ AI สำรวจไฟล์ B ก่อนว่ามีกี่หน้า และประกอบด้วยเอกสารประเภทใดบ้าง (เช่น ใบสั่งซื้อ PO, ใบเสนอราคา Quotation, ใบส่งของ ฯลฯ)
-            2. จากนั้นให้แบ่งรายงานผลออกเป็นส่วนๆ ตามประเภทเอกสารหรือหน้าที่พบในไฟล์ B (เช่น "ส่วนที่ 1: เปรียบเทียบกับหน้า [ชื่อประเภทเอกสารที่พบในไฟล์ B]")
+            คำสั่งการวิเคราะห์เอกสาร B:
+            1. สำรวจไฟล์ B ก่อนว่ามีกี่หน้า และประกอบด้วยเอกสารประเภทใดบ้าง (เช่น ใบสั่งซื้อ PO, ใบเสนอราคา Quotation ฯลฯ)
+            2. แบ่งรายงานผลออกเป็นส่วนๆ ตามประเภทเอกสารหรือหน้าที่พบในไฟล์ B (เช่น "ส่วนที่ 1: เปรียบเทียบกับหน้า [ชื่อประเภทเอกสาร]")
 
             เงื่อนไขการแสดงผลตาราง:
-            - ทุกส่วนต้องสรุปออกมาเป็นตาราง Markdown ที่มี 4 คอลัมน์หลักเสมอ:
+            - ทุกส่วนต้องสรุปออกมาเป็นตาราง Markdown ที่มีคอลัมน์หลักดังนี้:
               1. รายการ / รหัสสินค้า (พร้อมระบุเลขหน้า/Item ในไฟล์ B)
               2. รายละเอียดใน เอกสาร A (ไฟล์ตั้งต้น)
               3. รายละเอียดใน เอกสาร B (ไฟล์ตรวจสอบ)
-              4. ข้อแตกต่าง / จุดที่คลาดเคลื่อน
-            - ในช่อง "ข้อแตกต่าง / จุดที่คลาดเคลื่อน" ให้สรุปเป็นหัวข้อ Bullet Point (•) ที่สั้นกระชับ ตรงประเด็น เช่น ข้อความตกหล่น, สเปกหาย, รหัสรุ่นโดนตัดทอน, หรือมีรอยขีดฆ่าแก้ไข
+              4. ผลการตรวจสอบ / จุดที่แตกต่าง (ระบุสั้นๆ ว่า Description, จำนวน หรือราคา ตรงกันหรือไม่ตรงกันอย่างไร)
+            - ในช่อง "ผลการตรวจสอบ / จุดที่แตกต่าง" ให้สรุปเป็น Bullet Point (•) สั้นกระชับ ตรงประเด็น
             - ห้ามใช้แท็ก HTML เช่น <br> ในตารางเด็ดขาด
-            - หากหน้าไหนหรือส่วนไหนตรงกันทั้งหมด 100% ให้ระบุว่า "Description ตรงกันทุกประการ 100%"
+            - หากทั้ง Description, จำนวน และราคา ตรงกันหมดทุกรายการ ให้สรุปผลว่า "Description, จำนวน และราคา ตรงกันทุกประการ 100%"
             """
             
             # ระบบลองส่งซ้ำอัตโนมัติ (Auto-Retry) เมื่อเจอ 503 High Demand
@@ -100,7 +103,7 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             if not success or not response:
                 raise Exception("เซิร์ฟเวอร์หนาแน่นเกินไป โปรดลองกดปุ่มเริ่มตรวจสอบใหม่อีกครั้ง")
             
-            # แปลงข้อความและสั่งลบแท็ก <br> ทิ้งทั้งหมดโดยอัตโนมัติผ่าน Python
+            # ลบแท็ก <br> ทิ้งทั้งหมด
             clean_output = response.text.replace("<br>", " ").replace("<br/>", " ").replace("<BR>", " ")
             
             status_box.update(label="✅ ตรวจสอบเสร็จสิ้น!", state="complete", expanded=False)
@@ -110,7 +113,7 @@ if st.button("🚀 เริ่มตรวจสอบ Description", type="prim
             st.download_button(
                 label="📥 ดาวน์โหลดรายงานผลเป็นไฟล์ข้อความ (.txt)",
                 data=clean_output,
-                file_name="description_report.txt",
+                file_name="check_report.txt",
                 mime="text/plain"
             )
 
