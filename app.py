@@ -8,7 +8,7 @@ import time
 st.set_page_config(page_title="PDF Specific Fields Checker", page_icon="📄", layout="wide")
 
 st.title("📄 ระบบตรวจสอบ PO ")
-st.caption("เปรียบเทียบไฟล์ Quottion กับไฟล์ PO ที่ต้องการตรวจสอบ")
+st.caption("เปรียบเทียบไฟล์ Quotation กับไฟล์ PO ที่ต้องการตรวจสอบ")
 
 api_key = st.text_input("🔑 กรอก API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
