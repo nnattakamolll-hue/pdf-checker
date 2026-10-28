@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📄 ระบบตรวจสอบและเปรียบเทียบไฟล์ PDF (PO & Quotation) อัตโนมัติ")
+st.title("📄 ระบบตรวจสอบ (PO & Quotation)")
 st.caption("เปรียบเทียบไฟล์ Quotation (File A) กับ PO (File B) แบบละเอียดครบถ้วนทุกหน้า ยึดใบตั้งต้นเป็นหลัก 100%")
 
 api_key = st.text_input("กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
