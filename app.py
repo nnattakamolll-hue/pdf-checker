@@ -11,8 +11,8 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📄 ระบบตรวจสอบ (PO & Quotation)")
-st.caption("เปรียบเทียบไฟล์ Quotation (File A) กับ PO (File B) แบบละเอียดครบถ้วนทุกหน้า ยึดใบตั้งต้นเป็นหลัก 100%")
+st.title("📄 ระบบตรวจสอบและเปรียบเทียบไฟล์ PDF (PO & Quotation) อัตโนมัติ")
+st.caption("เปรียบเทียบไฟล์ Quotation ตั้งต้น (รองรับหลายไฟล์) กับ PO (File B) ตรวจสอบขนาด สเปก และรายละเอียดทุกหน้าอย่างแม่นยำ")
 
 api_key = st.text_input("กรอก Gemini API Key ของคุณที่นี่", type="password", help="วาง API Key ที่ได้มาจาก Google AI Studio ตรงนี้")
 
@@ -20,8 +20,8 @@ st.divider()
 
 col1, col2 = st.columns(2)
 with col1:
-    st.subheader("1. ไฟล์ตั้งต้น (Baseline - Quotation)")
-    file_a = st.file_uploader("เลือกไฟล์ PDF Quotation", type=["pdf"], key="file_quotation")
+    st.subheader("1. ไฟล์ตั้งต้น (Baseline - Quotation หลายไฟล์ได้)")
+    files_a = st.file_uploader("เลือกไฟล์ PDF Quotation (เลือกได้หลายไฟล์พร้อมกัน)", type=["pdf"], key="file_quotation", accept_multiple_files=True)
 
 with col2:
     st.subheader("2. ไฟล์ที่ต้องการตรวจ (To Check - PO)")
@@ -42,46 +42,52 @@ def upload_to_gemini(client, uploaded_file):
 
 st.divider()
 
-if st.button("🚀 เริ่มตรวจสอบและเปรียบเทียบไฟล์ PDF ทุกหน้า", type="primary", use_container_width=True):
+if st.button("🚀 เริ่มตรวจสอบขนาด สเปก และเปรียบเทียบไฟล์ PDF ทั้งหมด", type="primary", use_container_width=True):
     if not api_key:
         st.error("กรุณากรอก Gemini API Key ในช่องด้านบนก่อนครับ")
-    elif not file_a or not file_b:
-        st.error("กรุณาอัปโหลดไฟล์ PDF ให้ครบทั้ง 2 ไฟล์ครับ")
+    elif not files_a or not file_b:
+        st.error("กรุณาอัปโหลดไฟล์ PDF ตั้งต้น (Quotation) อย่างน้อย 1 ไฟล์ และไฟล์ PO ให้ครบถ้วนครับ")
     else:
-        status_box = st.status("กำลังประมวลผลตรวจสอบทุกหน้า ทุกแผ่น...", expanded=True)
+        status_box = st.status("กำลังประมวลผลตรวจสอบขนาดและสเปกทุกหน้า...", expanded=True)
         uploaded_files = []
         
         try:
             client = genai.Client(api_key=api_key)
             
-            status_box.write("กำลังส่งไฟล์เข้าสู่ระบบวิเคราะห์ AI...")
-            g_a = upload_to_gemini(client, file_a)
-            uploaded_files.append(g_a.name)
+            status_box.write("กำลังส่งไฟล์ตั้งต้น (Quotation) ทั้งหมดเข้าสู่ระบบ AI...")
+            g_a_list = []
+            for idx, f_a in enumerate(files_a):
+                status_box.write(f"กำลังอัปโหลดไฟล์ตั้งต้นที่ {idx+1}: {f_a.name}...")
+                g_a = upload_to_gemini(client, f_a)
+                g_a_list.append(g_a)
+                uploaded_files.append(g_a.name)
             
+            status_box.write("กำลังส่งไฟล์ PO เข้าสู่ระบบ...")
             g_b = upload_to_gemini(client, file_b)
             uploaded_files.append(g_b.name)
             
-            status_box.write("AI กำลังสแกนตรวจเทียบเอกสารทุกหน้าแบบละเอียด 100%...")
+            status_box.write("AI กำลังสแกนตรวจเทียบขนาด สเปก และรายละเอียดสินค้าทุกหน้าแบบละเอียด 100%...")
             
-            prompt = '''จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ PO) กับ เอกสาร A (ไฟล์ตั้งต้น Quotation) อย่างละเอียดถี่ถ้วน "ทุกหน้า ทุกแผ่นแบบครบถ้วน 100%"
+            prompt = '''จงเปรียบเทียบเอกสาร B (ไฟล์ตรวจสอบ PO) กับกลุ่มเอกสาร A (ไฟล์ตั้งต้น Quotation ทั้งหมดที่ให้ไป) อย่างละเอียดถี่ถ้วน "ทุกหน้า ทุกแผ่นแบบครบถ้วน 100%"
 
-หลักการตรวจสอบ:
-1. ตรวจสอบทีละหน้าอย่างเป็นระบบ (ตั้งแต่หน้าแรกจนถึงหน้าสุดท้ายของเอกสาร) ห้ามข้ามหน้าใดๆ ทั้งสิ้น
-2. ยึดข้อมูลในเอกสาร A (Quotation) เป็นความถูกต้องหลัก 100% (Description, รหัสสินค้า, ราคา, จำนวน)
-3. หากเอกสาร B มีการย่อข้อความ แต่ทำให้สาระสำคัญ สเปก รหัส หรือตัวเลขคลาดเคลื่อน/ตกหล่น ให้ถือว่าผิดพลาด
-4. ระบุเลขหน้า (page) ให้ตรงกับหน้าจริงในเอกสาร B ที่พบความผิดพลาด
+หลักการตรวจสอบความถูกต้องขั้นสูงสุด:
+1. ตรวจสอบทีละหน้าอย่างเป็นระบบ ห้ามข้ามหน้าใดๆ ทั้งสิ้น
+2. ยึดข้อมูลรวมในกลุ่มเอกสาร A (Quotation ทั้งหมด) เป็นความถูกต้องหลัก 100%
+3. **ตรวจสอบขนาด (Dimensions / Sizes), สเปก (Specifications), รหัสรุ่น (Model / Part Numbers), รายละเอียดสินค้า, ราคา, และจำนวน ให้ตรงกันทุกประการ**
+4. หากเอกสาร B มีการย่อข้อความ ตัดทอน หรือทำให้ขนาด ตัวเลข สเปก หรือรหัสสินค้าคลาดเคลื่อน/ตกหล่นไม่ตรงกับเอกสาร A ให้ถือว่าผิดพลาดทันที
+5. ระบุเลขหน้าให้ตรงกับหน้าจริงในเอกสาร B ที่พบความผิดพลาด
 
 รูปแบบรายงานสรุป:
-### ตารางเปรียบเทียบและผลการตรวจสอบ (ทุกหน้า)
+### ตารางเปรียบเทียบและผลการตรวจสอบ (ขนาดและสเปก)
 แสดงผลเป็นตาราง Markdown 5 คอลัมน์หลัก:
-1. หน้าที่พบ (Page)
+1. หน้าที่พบใน PO (Page)
 2. รายการ / รหัสสินค้า
-3. รายละเอียดใน A (ถูกต้อง)
-4. รายละเอียดใน B (ที่ผิด/ตกหล่น)
-5. ผลการตรวจสอบ / สิ่งที่ต้องแก้ไข
+3. ขนาดและรายละเอียดในกลุ่ม Quotation A (ถูกต้อง)
+4. ขนาดและรายละเอียดใน PO B (ที่ผิด/ตกหล่น/ไม่ตรง)
+5. ผลการตรวจสอบ / สิ่งที่ต้องแก้ไข (เน้นย้ำจุดที่ขนาดหรือสเปกเพี้ยน)
 
 ### สรุปภาพรวมทุกหน้า
-สรุปภาพรวมการตรวจสอบทุกแผ่น'''
+สรุปภาพรวมการตรวจสอบขนาดและสเปกทั้งหมด'''
             
             max_retries = 5
             retry_delay = 5
@@ -93,12 +99,14 @@ if st.button("🚀 เริ่มตรวจสอบและเปรีย�
                 temperature=0.1
             )
             
+            contents_list = g_a_list + [g_b, prompt]
+            
             for attempt in range(max_retries):
                 try:
-                    status_box.write(f"กำลังวิเคราะห์ข้อมูลทุกหน้า (พยายามครั้งที่ {attempt+1}/{max_retries})...")
+                    status_box.write(f"กำลังวิเคราะห์ขนาดและสเปก (พยายามครั้งที่ {attempt+1}/{max_retries})...")
                     response = client.models.generate_content(
                         model='gemini-3.8-flash',
-                        contents=[g_a, g_b, prompt],
+                        contents=contents_list,
                         config=config
                     )
                     success = True
@@ -114,15 +122,16 @@ if st.button("🚀 เริ่มตรวจสอบและเปรีย�
             if not success or not response:
                 raise Exception("เซิร์ฟเวอร์หนาแน่นเกินไป โปรดลองกดปุ่มเริ่มตรวจสอบใหม่อีกครั้ง")
             
-            clean_output = response.text.replace("<br>", " ").replace("<br/>", " ").replace("<BR>", " ")
+            raw_text = response.text if hasattr(response, 'text') else str(response)
+            clean_output = raw_text.replace("<br>", " ").replace("<br/>", " ").replace("<BR>", " ")
             
-            status_box.update(label="ตรวจสอบและวิเคราะห์เอกสารเรียบร้อยสมบูรณ์!", state="complete", expanded=False)
+            status_box.update(label="ตรวจสอบขนาด สเปก และเปรียบเทียบเอกสารเรียบร้อยสมบูรณ์!", state="complete", expanded=False)
             
             st.markdown(clean_output)
             
             st.divider()
             st.download_button(
-                label="ดาวน์โหลดรายงานผลการตรวจสอบ (.txt)",
+                label="ดาวน์โหลดรายงานผลการตรวจสอบขนาดและสเปก (.txt)",
                 data=clean_output,
                 file_name="po_audit_report.txt",
                 mime="text/plain"
